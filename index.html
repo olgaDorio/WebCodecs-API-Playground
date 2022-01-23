@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test</title>
+  </head>
+  <body>
+    <canvas></canvas>
+    <video src="./bunny/full.mp4" controls autoplay muted></video>
+  </body>
+
+  <script src="./FramesRenderer.js"></script>
+
+  <script>
+    (async () => {
+      const manifest = await fetch('bunny/manifest.json').then(r => r.json())
+
+      const framesRenderer = new FramesRenderer({
+        canvas: document.querySelector('canvas'),
+        config: {
+          codec: manifest.codec,
+          codedWidth: manifest.codedWidth,
+          codedHeight: manifest.codedHeight
+        }
+      });
+
+      if (!framesRenderer.isSupported) {
+        return;
+      }
+
+      const fetchFramesAndSendThemToRenderer = (list, index) => {
+        const fetchFrameBuffer = (url) => {
+          return fetch(url).then(r => r.arrayBuffer())
+        }
+
+        const current = list[index];
+
+        if (!current) {
+          framesRenderer.flush()
+          return;
+        }
+
+        fetchFrameBuffer(current.url)
+          .then((buffer) => {
+            framesRenderer.addFrames([{
+              ...current,
+              buffer,
+            }])
+
+            requestAnimationFrame(() => {
+              fetchFramesAndSendThemToRenderer(list, index + 1)
+            })
+          })
+      }
+
+      fetchFramesAndSendThemToRenderer(manifest.frames, 0)
+    })()
+  </script>
+</html>
+
